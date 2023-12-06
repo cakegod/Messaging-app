@@ -1,6 +1,22 @@
 import { InferSchemaType, model, Schema } from "mongoose";
 import bcrypt from "bcryptjs";
 
+const RelationshipSchema = new Schema({
+  type: {
+    type: String,
+    required: true,
+    enum: ["friend", "blocked", "pendingIncoming", "pendingOutgoing"],
+  },
+  user: {
+    ref: "User",
+    type: Schema.Types.ObjectId,
+  },
+});
+
+type Relationship = InferSchemaType<typeof RelationshipSchema>;
+
+const RelationshipModel = model("Relationship", RelationshipSchema);
+
 const UserSchema = new Schema(
   {
     email: {
@@ -17,33 +33,8 @@ const UserSchema = new Schema(
         return (this as User).username;
       },
     },
-    friends: {
-      type: [
-        {
-          type: Schema.Types.ObjectId,
-          ref: "User",
-        },
-      ],
-      required: false,
-      default: [],
-    },
-    sent_requests: {
-      type: [
-        {
-          type: Schema.Types.ObjectId,
-          ref: "FriendRequest",
-        },
-      ],
-      required: false,
-      default: [],
-    },
-    received_requests: {
-      type: [
-        {
-          type: Schema.Types.ObjectId,
-          ref: "FriendRequest",
-        },
-      ],
+    relationships: {
+      type: [RelationshipSchema],
       required: false,
       default: [],
     },

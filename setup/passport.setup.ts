@@ -1,20 +1,20 @@
 import { Strategy as LocalStrategy } from "passport-local";
 import passport from "passport";
-import { ExtractJwt, Strategy as JWTStrategy } from "passport-jwt";
+import { Strategy as JWTStrategy } from "passport-jwt";
 import { UserModel } from "../api/users/users.model";
+import { Request } from "express";
 
 const passportConfig = () => {
   passport.use(
     "login",
     new LocalStrategy(
       { usernameField: "email", passwordField: "password" },
-      async (username, password, done) => {
+      async (email, password, done) => {
         try {
-          const user = await UserModel.findOne({ email: username });
-
+          const user = await UserModel.findOne({ email });
           if (!user) {
             return done(null, false, {
-              message: "Incorrect username",
+              message: "Incorrect email",
             });
           }
 
@@ -32,11 +32,19 @@ const passportConfig = () => {
     ),
   );
 
+  function cookieExtractor(req: Request) {
+    let token = null;
+    if (req && req.cookies) {
+      token = req.cookies.token;
+    }
+    return token;
+  }
+
   passport.use(
     "jwt",
     new JWTStrategy(
       {
-        jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+        jwtFromRequest: cookieExtractor,
         secretOrKey: process.env.JWT_SECRET!,
       },
       async (token, done) => {

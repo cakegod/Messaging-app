@@ -4,6 +4,7 @@ import passportConfig from "../../setup/passport.setup";
 import { UserModel } from "../users/users.model";
 import { users } from "../users/users.fixture";
 import usersRoutes from "../users/users.routes";
+import cookieParser from "cookie-parser";
 
 function setupServer() {
   dot.config();
@@ -11,6 +12,8 @@ function setupServer() {
   passportConfig();
   app.use(express.urlencoded({ extended: false }));
   app.use(express.json());
+  app.use(cookieParser());
+
   app.use("/", usersRoutes);
 
   return app;
@@ -18,7 +21,7 @@ function setupServer() {
 
 async function cleanUp() {
   await UserModel.deleteMany();
-  await Promise.all(users.map((user) => new UserModel(user)));
+  await Promise.all(users.map((user) => new UserModel(user).save()));
 }
 
 export { setupServer, cleanUp };

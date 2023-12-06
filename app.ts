@@ -6,6 +6,7 @@ import cors from "cors";
 import passportConfig from "./setup/passport.setup";
 import { setupDB } from "./setup/database.setup";
 import usersRoutes from "./api/users/users.routes";
+import cookieParser from "cookie-parser";
 
 /* --- INIT DOTENV --- */
 dot.config();
@@ -18,7 +19,8 @@ const app = express();
 
 /* --- PARSERS --- */
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
 
 /* --- CORS --- */
 app.use(cors());

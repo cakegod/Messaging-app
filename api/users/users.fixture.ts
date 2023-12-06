@@ -1,6 +1,6 @@
 import { User, UserModel } from "./users.model";
 
-const data: readonly User[] = Object.freeze([
+const data = [
   {
     email: "fake@fake.com",
     password: "123",
@@ -16,8 +16,8 @@ const data: readonly User[] = Object.freeze([
     password: "123",
     username: "fake3",
   },
-]);
+] as const satisfies readonly User[];
 
-const users = data.map((user) => new UserModel(user));
+const users = data.map((user) => new UserModel(user))!;
 
 export { users };

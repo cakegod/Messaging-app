@@ -1,8 +1,28 @@
 import { body, validationResult } from "express-validator";
 import { Request, Response } from "express";
-import { UserModel } from "./users.model";
+import { User, UserModel } from "./users.model";
+import passport from "passport";
+import jwt from "jsonwebtoken";
 
-function postLogin() {}
+const postLogin = [
+  passport.authenticate("login", { session: false }),
+  (req: Request & { user: User & Document }, res: Response) => {
+    res
+      .cookie(
+        "token",
+        jwt.sign(
+          {
+            username: req.user.username,
+            // @ts-ignore
+            id: req.user.id,
+          },
+          process.env.JWT_SECRET!,
+        ),
+        { httpOnly: true },
+      )
+      .end();
+  },
+];
 
 const validateUser = () => [
   body("email").isEmail().trim().escape(),
@@ -26,8 +46,27 @@ const postRegister = [
 
     const user = await UserModel.create({ email, password, username });
 
-    res.status(200).end();
+    if (!user) {
+      return res.status(400).json("Error! Can't create the user.");
+    }
+
+    res.status(200).json(user);
   },
 ];
 
-export { postRegister, postLogin };
+const postSendFriendRequest = (
+  req: Request & { id: string },
+  res: Response,
+) => {
+  const requesterId = req.id;
+  console.log(requesterId);
+};
+
+const getCurrentUser = [
+  passport.authenticate("jwt", { session: false }),
+  (req: Request, res: Response) => {
+    res.json(req.user);
+  },
+];
+
+export { postRegister, postLogin, getCurrentUser };
