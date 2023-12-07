@@ -1,8 +1,10 @@
 import { body, validationResult } from "express-validator";
 import { Request, Response } from "express";
-import { User, UserModel } from "./users.model";
+import { RelationshipModel, User, UserModel } from "./users.model";
 import passport from "passport";
 import jwt from "jsonwebtoken";
+import { Document } from "mongoose";
+import { RelationshipType, UserWithDocument } from "./users.types";
 
 const postLogin = [
   passport.authenticate("login", { session: false }),
@@ -54,13 +56,46 @@ const postRegister = [
   },
 ];
 
-const postSendFriendRequest = (
-  req: Request & { id: string },
-  res: Response,
-) => {
-  const requesterId = req.id;
-  console.log(requesterId);
-};
+async function addRelationship(
+  type: RelationshipType,
+  requester: UserWithDocument,
+  requestee: UserWithDocument,
+) {
+  requester.relationships?.push(
+    new RelationshipModel({
+      type,
+      user: requestee,
+    }),
+  );
+  await requester.save();
+}
+
+async function addFriendRequest(
+  requester: UserWithDocument,
+  requestee: UserWithDocument,
+) {
+  await addRelationship("pendingOutgoing", requester, requestee);
+  await addRelationship("pendingIncoming", requestee, requester);
+}
+
+const postSendFriendRequest = [
+  passport.authenticate("jwt", { session: false }),
+  async (req: Request & { user: UserWithDocument }, res: Response) => {
+    const requester = req.user;
+    if (!requester) {
+      return res.status(401).end();
+    }
+
+    const requestee = await UserModel.findOne({ username: req.body.username });
+    if (!requestee) {
+      return res.status(404).end();
+    }
+
+    await addFriendRequest(requester, requestee);
+
+    res.status(200).end();
+  },
+];
 
 const getCurrentUser = [
   passport.authenticate("jwt", { session: false }),
@@ -69,4 +104,4 @@ const getCurrentUser = [
   },
 ];
 
-export { postRegister, postLogin, getCurrentUser };
+export { postRegister, postLogin, getCurrentUser, postSendFriendRequest };

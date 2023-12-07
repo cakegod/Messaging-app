@@ -1,7 +1,8 @@
 import { cleanUp, setupServer } from "../_shared/tests.util";
 import request from "supertest";
-import { UserModel } from "./users.model";
+import { User, UserModel } from "./users.model";
 import { users } from "./users.fixture";
+import { expect } from "vitest";
 
 const app = setupServer();
 
@@ -17,7 +18,10 @@ describe("/register", () => {
       password: "123",
       passwordConfirm: "123",
     };
-    const res = await request(app).post("/register").type("form").send(data);
+    const res = await request(app)
+      .post("/users/register")
+      .type("form")
+      .send(data);
 
     expect(res.headers["content-type"]).toMatch(/json/);
     expect(res.status).toBe(200);
@@ -32,7 +36,7 @@ describe("/register", () => {
   });
 
   it("should send BAD REQUEST when inputs are invalid", async () => {
-    const res = await request(app).post("/register").type("form").send({
+    const res = await request(app).post("/users/register").type("form").send({
       email: "cakeOmancer@fake.com",
       username: "cake",
       password: "123",
@@ -48,7 +52,7 @@ describe("/register", () => {
   it("should login and send the JWT token when credentials are valid", async () => {
     let user = users.at(1)!;
 
-    const res = await request(app).post("/login").type("form").send({
+    const res = await request(app).post("/users/login").type("form").send({
       email: user.email,
       password: user.password,
     });
@@ -58,14 +62,19 @@ describe("/register", () => {
   });
 });
 
-it("/users/@me should be able get the logged user with a valid token", async () => {
-  let user = users.at(1)!;
-
+async function login(user: User): Promise<request.SuperAgentTest> {
   const agent = request.agent(app);
-  await agent.post("/login").type("form").send({
+  await agent.post("/users/login").type("form").send({
     email: user.email,
     password: user.password,
   });
+
+  return agent;
+}
+
+it("/@me should get the logged user with a valid token", async () => {
+  let user = users.at(0)!;
+  const agent = await login(user);
 
   const res = await agent.get("/users/@me");
   expect(res.status).toBe(200);
@@ -74,4 +83,27 @@ it("/users/@me should be able get the logged user with a valid token", async () 
     username: user.username,
     email: user.email,
   });
+});
+
+it("should send a friend request when logged", async () => {
+  let user = users.at(0)!;
+  const agent = await login(user);
+
+  const friendToAdd = users.at(1)!;
+  const res = await agent.post("/users/@me/relationships").type("form").send({
+    username: friendToAdd.username,
+  });
+
+  expect(res.status).toBe(200);
+
+  // Check relationships
+  const requester = (await UserModel.findOne({ username: user.username }))!;
+  const requestee = (await UserModel.findOne({
+    username: friendToAdd.username,
+  }))!;
+
+  expect(requester?.relationships).toHaveLength(1);
+  expect(requestee?.relationships).toHaveLength(1);
+  expect(requester?.relationships?.at(0)?.user).toStrictEqual(requestee._id);
+  expect(requestee?.relationships?.at(0)?.user).toStrictEqual(requester._id);
 });

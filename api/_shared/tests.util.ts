@@ -14,7 +14,7 @@ function setupServer() {
   app.use(express.json());
   app.use(cookieParser());
 
-  app.use("/", usersRoutes);
+  app.use("/users", usersRoutes);
 
   return app;
 }
