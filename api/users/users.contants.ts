@@ -1,8 +1,8 @@
-const RELATIONSHIP_TYPES = [
-  "friend",
-  "blocked",
-  "pendingIncoming",
-  "pendingOutgoing",
-] as const;
+const RELATIONSHIP = {
+  Friend: "friend",
+  Blocked: "blocked",
+  PendingIncoming: "pendingIncoming",
+  PendingOutgoing: "pendingOutgoing",
+} as const;
 
-export { RELATIONSHIP_TYPES };
+export { RELATIONSHIP };

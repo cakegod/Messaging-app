@@ -2,9 +2,13 @@ import dot from "dotenv";
 import express from "express";
 import passportConfig from "../../setup/passport.setup";
 import { UserModel } from "../users/users.model";
-import { users } from "../users/users.fixture";
-import usersRoutes from "../users/users.routes";
+import { usersFixture } from "../users/users.fixture";
+import usersRouter from "../users/users.routes";
+import channelsRouter from "../channels/channels.routes";
 import cookieParser from "cookie-parser";
+import { ChannelModel } from "../channels/channels.model";
+import { channelsFixture } from "../channels/channels.fixture";
+import request from "supertest";
 
 function setupServer() {
   dot.config();
@@ -14,14 +18,24 @@ function setupServer() {
   app.use(express.json());
   app.use(cookieParser());
 
-  app.use("/users", usersRoutes);
+  app.use("/users", usersRouter);
+  app.use("/channels", channelsRouter);
 
   return app;
 }
 
 async function cleanUp() {
   await UserModel.deleteMany();
-  await Promise.all(users.map((user) => new UserModel(user).save()));
+  await ChannelModel.deleteMany();
+  await Promise.all(usersFixture.map((user) => new UserModel(user).save()));
+  await Promise.all(
+    channelsFixture.map((channel) => new ChannelModel(channel).save()),
+  );
 }
 
-export { setupServer, cleanUp };
+function jsonResponse(res: request.Response, status: number) {
+  expect(res.headers["content-type"]).toMatch(/json/);
+  expect(res.status).toBe(status);
+}
+
+export { setupServer, cleanUp, jsonResponse };

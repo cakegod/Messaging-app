@@ -5,6 +5,7 @@ import passport from "passport";
 import jwt from "jsonwebtoken";
 import { Document } from "mongoose";
 import { RelationshipType, UserWithDocument } from "./users.types";
+import { RELATIONSHIP } from "./users.contants";
 
 const postLogin = [
   passport.authenticate("login", { session: false }),
@@ -57,13 +58,13 @@ const postRegister = [
 ];
 
 async function addRelationship(
-  type: RelationshipType,
+  relationshipType: RelationshipType,
   requester: UserWithDocument,
   requestee: UserWithDocument,
 ) {
   requester.relationships?.push(
     new RelationshipModel({
-      type,
+      type: relationshipType,
       user: requestee,
     }),
   );
@@ -74,8 +75,8 @@ async function addFriendRequest(
   requester: UserWithDocument,
   requestee: UserWithDocument,
 ) {
-  await addRelationship("pendingOutgoing", requester, requestee);
-  await addRelationship("pendingIncoming", requestee, requester);
+  await addRelationship(RELATIONSHIP.PendingOutgoing, requester, requestee);
+  await addRelationship(RELATIONSHIP.PendingIncoming, requestee, requester);
 }
 
 const postSendFriendRequest = [
@@ -86,7 +87,7 @@ const postSendFriendRequest = [
       return res.status(401).end();
     }
 
-    const requestee = await UserModel.findOne({ username: req.body.username });
+    const requestee = await UserModel.findById(req.body.receiver_id).exec();
     if (!requestee) {
       return res.status(404).end();
     }

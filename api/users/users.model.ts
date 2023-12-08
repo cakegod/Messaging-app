@@ -1,12 +1,12 @@
 import { InferSchemaType, model, Schema } from "mongoose";
 import bcrypt from "bcryptjs";
-import { RELATIONSHIP_TYPES } from "./users.contants";
+import { RELATIONSHIP } from "./users.contants";
 
 const RelationshipSchema = new Schema({
   type: {
     type: String,
     required: true,
-    enum: RELATIONSHIP_TYPES,
+    enum: Object.values(RELATIONSHIP),
   },
   user: {
     ref: "User",
@@ -43,7 +43,6 @@ const UserSchema = new Schema(
   },
   {
     strict: "throw",
-
     methods: {
       async isPasswordValid(password) {
         return !(await bcrypt.compare(password, this.password));

@@ -1,7 +1,7 @@
-import { cleanUp, setupServer } from "../_shared/tests.util";
+import { cleanUp, jsonResponse, setupServer } from "../_shared/tests.util";
 import request from "supertest";
 import { User, UserModel } from "./users.model";
-import { users } from "./users.fixture";
+import { usersFixture } from "./users.fixture";
 import { expect } from "vitest";
 
 const app = setupServer();
@@ -12,7 +12,7 @@ beforeEach(async () => {
 
 describe("/register", () => {
   it("should register a user when inputs are valid", async () => {
-    let data = {
+    const data = {
       email: "cakeOmancer@fake.com",
       username: "cake",
       password: "123",
@@ -23,8 +23,7 @@ describe("/register", () => {
       .type("form")
       .send(data);
 
-    expect(res.headers["content-type"]).toMatch(/json/);
-    expect(res.status).toBe(200);
+    jsonResponse(res, 200);
     expect(res.body.username).toBe(data.username);
     expect(res.body.email).toBe(data.email);
 
@@ -42,15 +41,14 @@ describe("/register", () => {
       password: "123",
     });
 
-    expect(res.status).toBe(400);
-    expect(res.headers["content-type"]).toMatch(/json/);
+    jsonResponse(res, 400);
 
     // Missing passwordConfirm error
     expect(res.body?.errors).toHaveLength(1);
   });
 
   it("should login and send the JWT token when credentials are valid", async () => {
-    let user = users.at(1)!;
+    const user = usersFixture.at(1)!;
 
     const res = await request(app).post("/users/login").type("form").send({
       email: user.email,
@@ -73,12 +71,11 @@ async function login(user: User): Promise<request.SuperAgentTest> {
 }
 
 it("/@me should get the logged user with a valid token", async () => {
-  let user = users.at(0)!;
+  const user = usersFixture.at(0)!;
   const agent = await login(user);
 
   const res = await agent.get("/users/@me");
-  expect(res.status).toBe(200);
-  expect(res.headers["content-type"]).toMatch(/json/);
+  jsonResponse(res, 200);
   expect(res.body).toMatchObject({
     username: user.username,
     email: user.email,
@@ -86,21 +83,19 @@ it("/@me should get the logged user with a valid token", async () => {
 });
 
 it("should send a friend request when logged", async () => {
-  let user = users.at(0)!;
-  const agent = await login(user);
+  const sender = usersFixture.at(0)!;
+  const agent = await login(sender);
 
-  const friendToAdd = users.at(1)!;
+  const friendToAdd = usersFixture.at(1)!;
   const res = await agent.post("/users/@me/relationships").type("form").send({
-    username: friendToAdd.username,
+    receiver_id: friendToAdd.id,
   });
 
   expect(res.status).toBe(200);
 
   // Check relationships
-  const requester = (await UserModel.findOne({ username: user.username }))!;
-  const requestee = (await UserModel.findOne({
-    username: friendToAdd.username,
-  }))!;
+  const requester = (await UserModel.findById(sender.id))!;
+  const requestee = (await UserModel.findById(friendToAdd.id))!;
 
   expect(requester?.relationships).toHaveLength(1);
   expect(requestee?.relationships).toHaveLength(1);

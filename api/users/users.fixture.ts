@@ -18,6 +18,6 @@ const data = [
   },
 ] as const satisfies readonly User[];
 
-const users = data.map((user) => new UserModel(user))!;
+const usersFixture = data.map((user) => new UserModel(user))!;
 
-export { users };
+export { usersFixture };
