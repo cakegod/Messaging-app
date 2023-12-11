@@ -1,5 +1,6 @@
 import { ChannelModel } from "./channels.model";
 import { Request, Response } from "express";
+import { MessageModel } from "../messages/messages.model";
 
 const getAllChannels = async (req: Request, res: Response) => {
   const channels = await ChannelModel.find().exec();
@@ -17,4 +18,16 @@ const getChannel = async (req: Request, res: Response) => {
   return res.json(channel);
 };
 
-export { getAllChannels, getChannel };
+const getMessages = async (req: Request, res: Response) => {
+  const messages = await MessageModel.find({
+    channel_id: req.params.channel_id,
+  }).exec();
+
+  if (!messages) {
+    return res.status(404).end();
+  }
+
+  return res.json(messages);
+};
+
+export { getAllChannels, getChannel, getMessages };
