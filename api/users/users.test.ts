@@ -102,3 +102,47 @@ it("should send a friend request when logged", async () => {
   expect(requester?.relationships?.at(0)?.user).toStrictEqual(requestee._id);
   expect(requestee?.relationships?.at(0)?.user).toStrictEqual(requester._id);
 });
+
+it("should update the user profile", async () => {
+  const newName = "newOne";
+  const user = usersFixture.at(0)!;
+  const agent = await login(user);
+
+  const res = await agent.patch("/users/@me").type("form").send({
+    displayName: newName,
+  });
+
+  jsonResponse(res, 200);
+  expect(res.body.displayName).toBe(newName);
+});
+
+describe("should send BAD REQUEST when the user profile update invalid", () => {
+  function customTest({
+    newName,
+    testErrorMessage,
+  }: {
+    newName: string;
+    testErrorMessage: string;
+  }) {
+    it(testErrorMessage, async () => {
+      const user = usersFixture.at(0)!;
+      const agent = await login(user);
+
+      const res = await agent.patch("/users/@me").type("form").send({
+        displayName: newName,
+      });
+
+      jsonResponse(res, 400);
+      expect(res.body?.errors).toHaveLength(1);
+    });
+  }
+
+  customTest({
+    newName: "in",
+    testErrorMessage: "when name is too short",
+  });
+  customTest({
+    newName: "reeeeeeeeeeeeeeeeeeeeee",
+    testErrorMessage: "when name is too long",
+  });
+});

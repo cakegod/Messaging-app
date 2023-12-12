@@ -19,7 +19,7 @@ const postLogin = [
             // @ts-ignore
             id: req.user.id,
           },
-          process.env.JWT_SECRET!,
+          process.env.JWT_SECRET,
         ),
         { httpOnly: true },
       )
@@ -40,9 +40,8 @@ const validateUser = () => [
 const postRegister = [
   ...validateUser(),
   async (req: Request, res: Response) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+    if (!validationResult(req).isEmpty()) {
+      return res.status(400).json({ errors: validationResult(req).array() });
     }
 
     const { email, password, username } = req.body;
@@ -83,11 +82,13 @@ const postSendFriendRequest = [
   passport.authenticate("jwt", { session: false }),
   async (req: Request & { user: UserWithDocument }, res: Response) => {
     const requester = req.user;
+
     if (!requester) {
       return res.status(401).end();
     }
 
     const requestee = await UserModel.findById(req.body.receiver_id).exec();
+
     if (!requestee) {
       return res.status(404).end();
     }
@@ -98,11 +99,49 @@ const postSendFriendRequest = [
   },
 ];
 
+interface RequestWithJWT extends Request {
+  user: {
+    username: string;
+    id: string;
+  };
+}
+
 const getCurrentUser = [
   passport.authenticate("jwt", { session: false }),
-  (req: Request, res: Response) => {
+  (req: RequestWithJWT, res: Response) => {
     res.json(req.user);
   },
 ];
 
-export { postRegister, postLogin, getCurrentUser, postSendFriendRequest };
+const validateUserProfile = () => [
+  body("displayName").exists().isLength({ min: 4, max: 15 }),
+];
+
+// TODO add other profile changes
+const updateUser = [
+  passport.authenticate("jwt", { session: false }),
+  ...validateUserProfile(),
+  async (req: RequestWithJWT, res: Response) => {
+    if (!validationResult(req).isEmpty()) {
+      return res.status(400).json({ errors: validationResult(req).array() });
+    }
+
+    const update = await UserModel.findByIdAndUpdate(
+      req.user.id,
+      {
+        displayName: req.body.displayName,
+      },
+      { new: true },
+    ).exec();
+
+    return res.json(update);
+  },
+];
+
+export {
+  postRegister,
+  postLogin,
+  getCurrentUser,
+  postSendFriendRequest,
+  updateUser,
+};

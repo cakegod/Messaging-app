@@ -29,6 +29,7 @@ it("should get a specific channel", async () => {
 
 it("should get messages from a channel", async () => {
   const res = await request(app).get(`/channels/${firstChannelID}/messages`);
+
   jsonResponse(res, 200);
   expect(res.body).toHaveLength(firstChannelMessagesFixture.length);
 });

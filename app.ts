@@ -12,7 +12,7 @@ import cookieParser from "cookie-parser";
 dot.config();
 
 /* --- DATABASE CONNECTION --- */
-(async () => setupDB(process.env.MONGO_URL!))();
+(async () => setupDB(process.env.MONGO_URL))();
 
 /* --- INIT EXPRESS --- */
 const app = express();
@@ -44,7 +44,7 @@ passportConfig();
 
 app.use("/", usersRoutes);
 
-app.all("(.*)", (req: Request, res: Response) => {
+app.all("(.*)", (_req: Request, res: Response) => {
   res.status(404).json({ error: "Not Found" });
 });
 
