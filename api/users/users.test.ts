@@ -1,8 +1,13 @@
-import { cleanUp, jsonResponse, setupServer } from "../_shared/tests.util";
+import {
+  cleanUp,
+  expectJsonResponse,
+  setupServer,
+} from "../_shared/tests.util";
 import request from "supertest";
 import { User, UserModel } from "./users.model";
 import { usersFixture } from "./users.fixture";
 import { expect } from "vitest";
+import { UserWithDocument } from "./users.types";
 
 const app = setupServer();
 
@@ -23,7 +28,7 @@ describe("/register", () => {
       .type("form")
       .send(data);
 
-    jsonResponse(res, 200);
+    expectJsonResponse(res, 200);
     expect(res.body.username).toBe(data.username);
     expect(res.body.email).toBe(data.email);
 
@@ -41,7 +46,7 @@ describe("/register", () => {
       password: "123",
     });
 
-    jsonResponse(res, 400);
+    expectJsonResponse(res, 400);
 
     // Missing passwordConfirm error
     expect(res.body?.errors).toHaveLength(1);
@@ -75,74 +80,83 @@ it("/@me should get the logged user with a valid token", async () => {
   const agent = await login(user);
 
   const res = await agent.get("/users/@me");
-  jsonResponse(res, 200);
+
+  expectJsonResponse(res, 200);
   expect(res.body).toMatchObject({
     username: user.username,
     email: user.email,
   });
 });
 
+function hasRelationship(
+  sender: UserWithDocument,
+  receiver: UserWithDocument,
+): boolean {
+  return sender.relationships.some((relationship) =>
+    relationship.user.equals(receiver._id),
+  );
+}
+
 it("should send a friend request when logged", async () => {
-  const sender = usersFixture.at(0)!;
+  const [sender, receiver] = usersFixture;
   const agent = await login(sender);
 
-  const friendToAdd = usersFixture.at(1)!;
   const res = await agent.post("/users/@me/relationships").type("form").send({
-    receiver_id: friendToAdd.id,
+    receiver_id: receiver.id,
   });
 
   expect(res.status).toBe(200);
 
   // Check relationships
-  const requester = (await UserModel.findById(sender.id))!;
-  const requestee = (await UserModel.findById(friendToAdd.id))!;
+  const updatedSender = (await UserModel.findById(sender.id))!;
+  const updatedReceiver = (await UserModel.findById(receiver.id))!;
 
-  expect(requester?.relationships).toHaveLength(1);
-  expect(requestee?.relationships).toHaveLength(1);
-  expect(requester?.relationships?.at(0)?.user).toStrictEqual(requestee._id);
-  expect(requestee?.relationships?.at(0)?.user).toStrictEqual(requester._id);
+  expect(updatedSender?.relationships).toHaveLength(1);
+  expect(updatedReceiver?.relationships).toHaveLength(1);
+  expect(hasRelationship(updatedSender, updatedReceiver)).toBeTruthy();
+  expect(hasRelationship(updatedReceiver, updatedSender)).toBeTruthy();
 });
 
 it("should update the user profile", async () => {
-  const newName = "newOne";
-  const user = usersFixture.at(0)!;
+  const newName = "someNewName";
+  const [user] = usersFixture;
   const agent = await login(user);
 
   const res = await agent.patch("/users/@me").type("form").send({
     displayName: newName,
   });
 
-  jsonResponse(res, 200);
+  expectJsonResponse(res, 200);
   expect(res.body.displayName).toBe(newName);
 });
 
-describe("should send BAD REQUEST when the user profile update invalid", () => {
+describe("should send BAD REQUEST when the user profile update is invalid", () => {
   function customTest({
-    newName,
-    testErrorMessage,
+    updatedDisplayName,
+    vitestTestName,
   }: {
-    newName: string;
-    testErrorMessage: string;
+    updatedDisplayName: string;
+    vitestTestName: string;
   }) {
-    it(testErrorMessage, async () => {
+    it(vitestTestName, async () => {
       const user = usersFixture.at(0)!;
       const agent = await login(user);
 
       const res = await agent.patch("/users/@me").type("form").send({
-        displayName: newName,
+        displayName: updatedDisplayName,
       });
 
-      jsonResponse(res, 400);
+      expectJsonResponse(res, 400);
       expect(res.body?.errors).toHaveLength(1);
     });
   }
 
   customTest({
-    newName: "in",
-    testErrorMessage: "when name is too short",
+    updatedDisplayName: "in",
+    vitestTestName: "when name is too short",
   });
   customTest({
-    newName: "reeeeeeeeeeeeeeeeeeeeee",
-    testErrorMessage: "when name is too long",
+    updatedDisplayName: "reeeeeeeeeeeeeeeeeeeeee",
+    vitestTestName: "when name is too long",
   });
 });

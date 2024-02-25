@@ -41,9 +41,9 @@ async function cleanUp() {
   );
 }
 
-function jsonResponse(res: request.Response, status: number) {
+function expectJsonResponse(res: request.Response, status: number) {
   expect(res.headers["content-type"]).toMatch(/json/);
   expect(res.status).toBe(status);
 }
 
-export { setupServer, cleanUp, jsonResponse };
+export { setupServer, cleanUp, expectJsonResponse };

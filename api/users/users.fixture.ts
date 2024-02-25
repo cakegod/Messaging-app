@@ -16,7 +16,7 @@ const data = [
     password: "123",
     username: "fake3",
   },
-] as const satisfies readonly User[];
+] as const satisfies readonly Omit<User, "relationships">[];
 
 const usersFixture = data.map((user) => new UserModel(user))!;
 

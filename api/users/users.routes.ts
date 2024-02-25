@@ -4,7 +4,7 @@ import {
   postLogin,
   postRegister,
   postSendFriendRequest,
-  updateUser,
+  patchUpdateUser,
 } from "./users.handlers";
 
 const router = express.Router();
@@ -12,7 +12,7 @@ const router = express.Router();
 router.post("/login", postLogin);
 router.post("/register", postRegister);
 router.get("/@me", getCurrentUser);
-router.patch("/@me", updateUser);
+router.patch("/@me", patchUpdateUser);
 router.post("/@me/relationships", postSendFriendRequest);
 
 export default router;

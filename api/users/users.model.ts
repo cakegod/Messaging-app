@@ -37,7 +37,7 @@ const UserSchema = new Schema(
     },
     relationships: {
       type: [RelationshipSchema],
-      required: false,
+      required: true,
       default: [],
     },
   },

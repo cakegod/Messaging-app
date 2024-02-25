@@ -1,22 +1,20 @@
 import { body, validationResult } from "express-validator";
 import { Request, Response } from "express";
-import { RelationshipModel, User, UserModel } from "./users.model";
+import { RelationshipModel, UserModel } from "./users.model";
 import passport from "passport";
 import jwt from "jsonwebtoken";
-import { Document } from "mongoose";
 import { RelationshipType, UserWithDocument } from "./users.types";
 import { RELATIONSHIP } from "./users.contants";
 
 const postLogin = [
   passport.authenticate("login", { session: false }),
-  (req: Request & { user: User & Document }, res: Response) => {
+  (req: Request & { user: UserWithDocument }, res: Response) => {
     res
       .cookie(
         "token",
         jwt.sign(
           {
             username: req.user.username,
-            // @ts-ignore
             id: req.user.id,
           },
           process.env.JWT_SECRET,
@@ -44,9 +42,11 @@ const postRegister = [
       return res.status(400).json({ errors: validationResult(req).array() });
     }
 
-    const { email, password, username } = req.body;
-
-    const user = await UserModel.create({ email, password, username });
+    const user = await UserModel.create({
+      email: req.body.email,
+      password: req.body.password,
+      username: req.body.username,
+    });
 
     if (!user) {
       return res.status(400).json("Error! Can't create the user.");
@@ -58,57 +58,60 @@ const postRegister = [
 
 async function addRelationship(
   relationshipType: RelationshipType,
-  requester: UserWithDocument,
-  requestee: UserWithDocument,
+  sender: UserWithDocument,
+  receiver: UserWithDocument,
 ) {
-  requester.relationships?.push(
+  sender.relationships?.push(
     new RelationshipModel({
       type: relationshipType,
-      user: requestee,
+      user: receiver,
     }),
   );
-  await requester.save();
+  await sender.save();
 }
 
 async function addFriendRequest(
-  requester: UserWithDocument,
-  requestee: UserWithDocument,
+  sender: UserWithDocument,
+  receiver: UserWithDocument,
 ) {
-  await addRelationship(RELATIONSHIP.PendingOutgoing, requester, requestee);
-  await addRelationship(RELATIONSHIP.PendingIncoming, requestee, requester);
+  await addRelationship(RELATIONSHIP.PendingOutgoing, sender, receiver);
+  await addRelationship(RELATIONSHIP.PendingIncoming, receiver, sender);
 }
 
 const postSendFriendRequest = [
   passport.authenticate("jwt", { session: false }),
   async (req: Request & { user: UserWithDocument }, res: Response) => {
-    const requester = req.user;
+    const sender = req.user;
 
-    if (!requester) {
+    if (!sender) {
       return res.status(401).end();
     }
 
-    const requestee = await UserModel.findById(req.body.receiver_id).exec();
+    const receiver = await UserModel.findById(req.body.receiver_id).exec();
 
-    if (!requestee) {
+    if (!receiver) {
       return res.status(404).end();
     }
 
-    await addFriendRequest(requester, requestee);
+    await addFriendRequest(sender, receiver);
 
     res.status(200).end();
   },
 ];
 
-interface RequestWithJWT extends Request {
+interface ValidatedRequestWithJWT extends Request {
   user: {
     username: string;
     id: string;
+  };
+  body: {
+    displayName: string;
   };
 }
 
 const getCurrentUser = [
   passport.authenticate("jwt", { session: false }),
-  (req: RequestWithJWT, res: Response) => {
+  (req: ValidatedRequestWithJWT, res: Response) => {
     res.json(req.user);
   },
 ];
@@ -118,10 +121,10 @@ const validateUserProfile = () => [
 ];
 
 // TODO add other profile changes
-const updateUser = [
+const patchUpdateUser = [
   passport.authenticate("jwt", { session: false }),
   ...validateUserProfile(),
-  async (req: RequestWithJWT, res: Response) => {
+  async (req: ValidatedRequestWithJWT, res: Response) => {
     if (!validationResult(req).isEmpty()) {
       return res.status(400).json({ errors: validationResult(req).array() });
     }
@@ -143,5 +146,5 @@ export {
   postLogin,
   getCurrentUser,
   postSendFriendRequest,
-  updateUser,
+  patchUpdateUser,
 };
